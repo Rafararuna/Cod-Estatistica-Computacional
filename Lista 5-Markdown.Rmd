@@ -1,0 +1,222 @@
+---
+title: "Lista de Exercícios 5 - MCMC"
+author: "Rafael Santana Araruna"
+date: "19/04/2022"
+output: pdf_document
+---
+
+## Questão 1
+
+A densidade da distribuição Rayleigh é dada por:
+
+
+$$f(x) = \frac{x}{\sigma^{2}} e^{-x^{2}/(2\sigma^{2})}, x \geq 0, \sigma > 0$$
+
+Dessa forma, primeiramente, implementamos essa função a partir do seguinte código:
+
+```{r message=FALSE, warning=FALSE,echo=TRUE}
+require(bbmle)
+f <- function (x, sigma) {
+  
+  if(any(x<0)) 
+    return(0)
+  
+  stopifnot(sigma>0)
+  
+  return(x*exp(-x^2/(2*sigma^2))/sigma^2)
+  
+}
+```
+
+Em seguida, definimos algumas variáveis:
+
+```{r message=FALSE, warning=FALSE,echo=TRUE}
+sigma <- 2
+burn_in <- 2000 + 1
+k <- 0
+N <- 10000
+x <- numeric(N)
+x[1] <- rchisq(1, df=1)
+u <- runif(N)
+```
+
+Agora, a partir do código abaixo, implementamos o algorítmo MH:
+
+```{r message=FALSE, warning=FALSE,echo=TRUE}
+for (i in 2:N) {
+  
+  xt <- x[i-1]
+  y <- rchisq(1, df=xt)
+  num <- f(y, sigma)*dchisq(xt, df=y)
+  den <- f(xt, sigma)*dchisq(y, df=xt)
+  
+  if (u[i] <= num/den) {
+    
+    x[i] <- y
+    
+    }
+  else {
+    
+    x[i] <- xt
+    k <- k + 1
+    
+  }
+}
+
+```
+
+Agora, printamos a quantidade de aceitação e a sua respectiva taxa:
+
+```{r message=FALSE, warning=FALSE,echo=TRUE}
+qntd_aceitacao <- k
+
+tx_aceitacao <- (k/N)*100
+```
+
+```{r message=FALSE, warning=FALSE,echo=FALSE}
+df <- data.frame("Quantidade de aceitação" = qntd_aceitacao,
+                 "Taxa de aceitação" = paste(tx_aceitacao, "%"))
+
+library(knitr)
+knitr::kable(df, align = 'c', caption = "Resultados do Algorítmo MH")
+```
+
+Por fim, fazemos a comparação por meio dos gráficos abaixo:
+
+```{r message=FALSE, warning=FALSE,echo=TRUE}
+par(mfrow=c(1,2))
+
+y1 <- x[burn_in:N]
+a <- ppoints(100)
+QR <- sigma*sqrt(-2*log(1-a))
+Q <- quantile(x, a)
+
+qqplot(QR, Q, main="", xlab="Rayleigh Quantiles", ylab="Sample Quantiles")
+abline(0,1,col='red')
+
+hist(y1, breaks="scott", main="", xlab="", freq=FALSE)
+lines(QR, f(QR, 2), col = "red")
+```
+
+## Questão 2
+
+Primeiramente, definimos algumas variáveis:
+
+```{r message=FALSE, warning=FALSE, echo=TRUE}
+sigma <- 2
+burn.in <- 2000 + 1
+k <- 0
+N <- 10000
+x <- numeric(N)
+x[1] <-  rgamma(1, shape=1)
+u <- runif(N)
+```
+
+Agora, a partir do código abaixo, implementamos o algorítmo MH:
+
+```{r message=FALSE, warning=FALSE, echo=TRUE}
+for (i in 2:N) {
+  
+  xt <- x[i-1]
+  y <- rgamma(1, shape=xt)
+  num <- f(y, sigma)*dgamma(xt, shape=y)
+  den <- f(xt, sigma)*dgamma(y, shape=xt)
+  
+  if (u[i] <= num/den) {
+    
+    x[i] <- y
+    
+    }
+  
+  else {
+    
+    x[i] <- xt
+    k <- k + 1
+    
+  }
+}
+```
+
+Agora, printamos a quantidade de aceitação e a sua respectiva taxa:
+
+```{r message=FALSE, warning=FALSE,echo=TRUE}
+qntd_aceitacao <- k
+
+tx_aceitacao <- (k/N)*100
+```
+
+```{r message=FALSE, warning=FALSE,echo=FALSE}
+df <- data.frame("Quantidade de aceitação" = qntd_aceitacao,
+                 "Taxa de aceitação" = paste(tx_aceitacao, "%"))
+
+library(knitr)
+knitr::kable(df, align = 'c', caption = "Resultados do Algorítmo MH")
+```
+
+Por fim, realizamos a comparação gráfica a partir das figuras abaixo:
+
+```{r message=FALSE, warning=FALSE,echo=TRUE}
+par(mfrow=c(1,2))
+
+y1 <- x[burn.in:N]
+a <- ppoints(100)
+QR <- sigma*sqrt(-2*log(1-a))
+Q <- quantile(x, a)
+qqplot(QR, Q, main="", xlab="Rayleigh Quantiles", ylab="Sample Quantiles")
+abline(0,1,col='red')
+
+hist(y1, breaks="scott", main="", xlab="", freq=FALSE)
+lines(QR, f(QR, 2), col = "red")
+```
+
+## Questão 3
+
+Primeiramente, definimos algumas variáveis:
+
+```{r message=FALSE, warning=FALSE,echo=TRUE}
+y <- c(0.02, -0.18, -1.37, -0.60,  0.29,  0.39, -1.21, -0.36, -1.63, -0.26)
+m <- 0
+C <- 10
+v <- 1
+s <- 1
+N <- 10000
+
+mu_keep <- numeric(N)
+sigma_keep <- numeric(N)
+
+n <- length(y)
+sum_y <- sum(y)
+vp <- v+n
+vs2 <- v*s^2
+
+mu <- 0
+sigma2 <- 1
+```
+
+Em seguida, a partir do seguinte código, implementa-se o algorítmo de Gibbs:
+
+```{r message=FALSE, warning=FALSE,echo=TRUE}
+for (i in 1:N) {
+  
+  Cp <- 1/(n/sigma2+1/C)
+  mp <- Cp*(sum_y/sigma2+m/C)
+  mu <- rnorm(1, mp, sqrt(Cp))
+  
+  vpsp2 <- vs2 + sum((y-mu)^2)
+  sigma2 <- 1/rgamma(1, vp/2, vpsp2/2)
+  
+  mu_keep[i] <- mu
+  sigma_keep[i] <- sqrt(sigma2)
+  
+}
+```
+
+
+Por fim, plotamos os histogramas:
+
+```{r message=FALSE, warning=FALSE,echo=TRUE}
+par(mfrow=c(1,2))
+
+hist(mu_keep,breaks=50,freq=FALSE)
+hist(sigma_keep,breaks=50,freq=FALSE)
+```

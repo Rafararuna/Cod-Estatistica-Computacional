@@ -1,0 +1,112 @@
+---
+title: "Prova 2"
+author: "Rafael Santana Araruna"
+date: "25/04/2022"
+output: pdf_document
+---
+
+## Exercício 1
+
+Primeiramente, carrega-se o pacote "bootstrap" e define-se algumas variáveis:
+
+```{r message=FALSE, warning=FALSE, echo=TRUE}
+library("bootstrap")
+
+B <-  999 # número de réplicas
+n <-  nrow(law) # tamanho da amostra
+
+theta.hat    <-  cor(law$LSAT, law$GPA)
+theta.hats.b <-  numeric(B)
+```
+
+Em seguida, considerando 999 réplicas, implementa-se o algorítmo para o cálculo dos "theta.hats.b":
+
+```{r message=FALSE, warning=FALSE, echo=TRUE}
+for (b in 1:B) {
+  
+  i               <- sample(x = 1:n, size = n, replace = TRUE)
+  law.b           <-  law[i,]
+  theta.hats.b[b] <-  cor(law.b$LSAT, law.b$GPA)
+  
+}
+```
+
+Agora, a partir do código abaixo, é possível calcular o intervalo de confiança bootstrap percentil de 95%:
+
+```{r message=FALSE, warning=FALSE, echo=TRUE}
+alpha <- c(.025, .975)
+print(quantile(theta.hats.b, alpha))
+print(theta.hat)
+```
+Analisando as saídas acima, percebe-se que o valor do theta.hat está dentro do intervalo de confiança.
+
+
+Outra forma de resolvermos essa questão é usando o pacote "boot", conforme foi feito no código abaixo:
+
+```{r message=FALSE, warning=FALSE,echo=TRUE}
+require(bootstrap)
+require(boot)
+
+theta.b <- function(dat,ind){
+  
+  LSAT <- dat[ind,1]
+  GPA  <- dat[ind,2]
+  return(cor(LSAT,GPA))
+  
+}
+
+LSAT <- law$LSAT
+GPA  <- law$GPA
+dat  <- cbind(LSAT,GPA)
+
+boot.obj <- boot(dat, statistic = theta.b, R=999)
+boot.ci(boot.obj,type = c("perc"))
+
+theta.hat <- cor(LSAT,GPA)
+print(theta.hat)
+```
+Analisando as saídas acima, percebe-se que o valor do theta.hat está dentro do intervalo de confiança.
+
+## Exercício 2
+
+Primeiramente, define-se algumas variáveis:
+
+```{r message=FALSE, warning=FALSE,echo=TRUE}
+nsim <- 100 # número de simulações
+p    <- 5
+rho  <- 0.25
+x    <- rnorm(p)
+y    <- rnorm(p)
+```
+
+Em seguida, usando a condicional dada na questão, implementa-se, a partir do código abaixo, o amostrador de Gibbs:
+
+```{r message=FALSE, warning=FALSE,echo=TRUE}
+for (k in 1:nsim){
+  
+  for (j in 1:p){
+    
+    m    <- sum(y[-j])/(p-1)
+    y[j] <- rnorm(1,(p-1)*rho*m/(1+(p-2)*rho),
+             sqrt((1+(p-2)*rho-(p-1)*rho^2)/(1+(p-2)*rho)))
+    
+}
+  
+  x <- cbind(x,y)
+  
+}
+```
+
+Agora, realiza-se o plot dos histogramas sobrepostos pelas respectivas densidades:
+
+```{r message=FALSE, warning=FALSE,echo=TRUE}
+par(mfrow = c(2,3))
+
+for (i in 1:p){
+  
+  hist(x[i,], prob = TRUE, col = "red", ylab = "Densidade", ylim = c(0,0.5))
+  curve(dnorm(x), add = TRUE, col = "black", lwd = 2)
+  
+}
+```
+

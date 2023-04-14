@@ -1,0 +1,243 @@
+---
+title: "Lista 3 - Métodos de Monte Carlo"
+author: "Rafael Santana Araruna"
+date: "22/03/2022"
+output: pdf_document
+---
+
+# Exercício 1)
+
+Sabendo que $X \sim N(0,1)$ e considerando $N = 10^{7}$, o cálculo da probabilidade estimada, utilizando Monte Carlo, pode ser feito a partir do seguinte código:
+
+```{r message=FALSE, warning=FALSE, echo=TRUE}
+# Probabilidade estimada por MC:
+
+N <- 10^7
+x <- rnorm(N, mean = 0, sd = 1) # gerando os NPA's
+p.hat <- sum(sin(x) > 1/2)/N
+
+# Solução analítica:
+
+p.analitico <- 1 - pnorm(1/2)
+
+# Comparando os dois resultados:
+
+diferenca <- (1 - pnorm(1/2)) - p.hat
+```
+
+```{r message=FALSE, warning=FALSE, echo=FALSE}
+df <- data.frame("p.hat" = 0.2957739,
+                 "p.analitico" = 0.3085375,
+                 "diferença" = 0.01276364)
+
+library(knitr)
+knitr::kable(df,caption = "Estimativa de Monte Carlo",align = "c")
+```
+
+
+# Exercício 2)
+
+Primeiramente, calcula-se o valor médio $E[h(x)]$, que é representado pela fórmula abaixo:
+
+$$\hat\theta = \frac{1}{N}\sum_{i=1}^{N}h(x_i),\ x_i \sim U[0,1]$$
+
+
+O cálculo do $\hat\theta$ vai ser feito através da estimativa de Monte Carlo utilizando o seguinte código:
+
+```{r message=FALSE, warning=FALSE, echo=TRUE}
+a <- function(x){
+  (cos(50*x)+sin(20*x))^2
+}
+
+u <- runif(1000,0,1)
+
+theta.hat <- mean(a(u))
+```
+
+
+```{r message=FALSE, warning=FALSE, echo=FALSE}
+df <- data.frame("theta.hat" = 0.9682324)
+
+library(knitr)
+knitr::kable(df,caption = "Estimativa de Monte Carlo",align = "c")
+```
+
+
+Em seguida, por meio do código abaixo, calula-se a forma análitica usando a função *integrate*:
+
+
+```{r message=FALSE, warning=FALSE, echo=TRUE}
+theta.analitico <- integrate(a,0,1)
+```
+
+
+```{r message=FALSE, warning=FALSE, echo=FALSE}
+df <- data.frame("theta.analitico" = 0.9652009)
+
+library(knitr)
+knitr::kable(df,caption = "Forma Analítica",align = "c")
+```
+
+
+Comparando os valores das duas estimativas, nota-se que a diferença entre a estimativa de Monte Carlo e a forma analítica é quase igual a 0, ou seja, os valores dos dois métodos são muitos próximos.
+
+```{r message=FALSE, warning=FALSE, echo=TRUE}
+diferenca <- theta.hat - theta.analitico$value
+```
+
+```{r message=FALSE, warning=FALSE, echo=FALSE}
+df <- data.frame("diferença" = 0.07451524)
+
+library(knitr)
+knitr::kable(df,caption = "Comparação dos valores das duas estimativas",align = "c")
+```
+
+
+# Exercício 3)
+
+Primeiramente, define-se a função g(x) a partir do código abaixo:
+
+```{r message=FALSE, warning=FALSE, echo=TRUE}
+g_x <-  function(x){
+  
+  ((x^2)/sqrt(2*pi)) * exp((-x^2)/2) * (x > 1) * (x < Inf)
+  
+}
+
+# (x > 1) > limite inferior
+# (x < Inf) > limite superior
+```
+
+Em seguida, define-se as funções de importância, que no caso vão ser duas:
+
+* função densidade da distribuição Normal
+
+```{r message=FALSE, warning=FALSE, echo=TRUE}
+f_x1 <- function(x,mi_norm,sigma_norm){
+  
+  (1/(sigma_norm*sqrt(2*pi))) * exp((-(x-mi_norm)^2)/(2*sigma_norm^2))
+
+}
+```
+
+
+* função densidade da distribuição Rayleigh
+
+```{r message=FALSE, warning=FALSE, echo=TRUE}
+f_x2 <- function(x,sigma_ray){
+  
+  (x/sigma_ray^2)*exp((-x^2)/(2*sigma_ray^2))
+
+}
+```
+
+Agora, basta calcular as estimativas $\hat{\theta}$ e $\hat{\sigma}^2$. Para isso, implementa-se o seguinte código:
+
+```{r message=FALSE, warning=FALSE, echo=TRUE}
+# Implementando as funções de importância:
+m <- 10000
+theta.hat <- numeric(2)
+se <- numeric(2)
+
+## Normal
+x <- rnorm(m, mean = 1.5, sd = 1) # gerando os NPA's
+f_norm <- f_x1(x,1.5,1) 
+
+fg <- g_x(x)/f_norm
+theta.hat[1] <- mean(fg)
+se[1] <- sd(fg)
+
+## Rayleigh
+#install.packages("extraDistr")
+library(extraDistr)
+x <- rrayleigh(m,sigma = 1.5) # gerando os NPA's
+f_ray <- f_x2(x,1.5)
+
+fg <- g_x(x)/f_ray
+theta.hat[2] <- mean(fg)
+se[2] <- sd(fg)
+
+## Integrate
+h <- integrate(g_x,0,Inf)
+```
+
+
+Assim, tem-se os seguintes resultados:
+
+```{r message=FALSE, warning=FALSE, echo=FALSE}
+df <- data.frame("Distribução" = c("Normal", "Rayleigh", "Integrate"),
+                 "theta.hat" =c(0.4024569, 0.4022811, 0.400626),
+                 "se" = c(0.3010947, 0.2842423, " "))
+
+library(knitr)
+knitr::kable(df,caption = "Resultados das Estimativas",align = "c")
+```
+
+# Exercício 4)
+
+Primeiramente, define-se a função de log-verossimilhança:
+
+```{r message=FALSE, warning=FALSE, echo=FALSE}
+library("bbmle")
+```
+
+```{r message=FALSE, warning=FALSE, echo=TRUE}
+f_log_vero <- function(b_0,b_1,mi,sigma){
+  
+  R = y - (x*b_1) - b_0
+  R = suppressWarnings(dnorm(R, mi, sigma, log = TRUE))
+  return(-sum(R))
+  
+}
+```
+
+
+Em seguida, define-se os dados fornecidos na questão e, depois, considerando N = 1000, implementa-se o código para o cálculo das estimativas para cada tamanho da amostra. Então:
+
+```{r message=FALSE, warning=FALSE, echo=TRUE}
+N <- 1000 # número de replicações
+n <- c(25,60,120) # tamanho das amostras
+parametros <- c(b_0 <- 0.2, b_1 <- 0.5, sigma2 <- 1.0) # parâmetros
+
+
+beta0 <- c()
+beta1 <- c()
+s2 <- c()
+vies <- NULL
+par_est <- NULL
+
+
+for (i in 1:length(n)){
+  
+  x <- runif(n[i])
+  
+  for (j in 1:N){
+    
+    y <- b_0 + b_1*x + rnorm(n[i])
+    fit <- mle2(f_log_vero, start = list(b_0 = b_0, b_1 = b_1, mi = 0,
+                                 sigma = sigma2), fixed = list(mi = 0))
+    
+    beta0 <- fit@coef[1]
+    beta1 <- fit@coef[2]
+    s2 <- fit@coef[3]
+    
+    result <- c(beta0,beta1,s2)
+    par_estimados <- rbind(par_est,result)
+    
+}
+  
+  vies <- rbind(vies, c(n[i], colMeans(par_estimados) - parametros))
+  
+}
+```
+
+```{r message=FALSE, warning=FALSE, echo=FALSE}
+df.vies <- as.data.frame(vies)
+names(df.vies)[1] <- "Tamanho da amostra (n)"
+
+library(knitr)
+knitr::kable(df.vies, align = 'c', caption = "Simulações de Monte Carlo")
+```
+
+
+

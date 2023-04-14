@@ -1,0 +1,210 @@
+---
+title: "Lista 1 - NPA's"
+author: "Rafael Santana Araruna"
+date: "27/01/2022"
+output: pdf_document
+---
+
+\textbf{Exercício 1)} Use o método da transformada inversa para gerar 10.000 números pseudo-aleatórios a partir da seguinte densidade ($\mu=1$, $\beta$=1):
+
+$$
+\begin{aligned}
+ f(x)= \frac{\beta}{\pi(\beta^2+(x-\mu)^2)} \\
+\end{aligned}
+$$
+Primeiramente, é necessário encontrar a FDA, F(X). Substituindo $\mu = 1$ e $\beta = 1$, chega-se no seguinte resultado: 
+
+$$F(X) = \int_{0}^{x}f(x)dx =  \int_{0}^{x}\frac{\beta }{\pi (\beta^{2} + (t-\mu)^{2})}dt$$
+$$F(X) =  \frac{1}{\pi} arctan(x - 1) + \frac{1}{2}$$
+
+Assim, sabendo que U = F(X), podemos encontrar o valor de x isolando-o como foi feito abaixo:
+
+$$x = tan(\pi u - \frac{\pi}{2}) + 1$$
+
+Dessa forma, a partir da equação acima, conseguimos gerar os NPA's a partir do seguinte código:
+
+```{r message=FALSE, warning=FALSE}
+n <- 10000
+u <- runif(n)
+x <- tan(pi*u-pi/2)+1
+```
+
+Agora que temos os NPA's, plota-se o seguinte histograma:
+
+```{r message=FALSE, warning=FALSE}
+library(ggplot2)
+ggplot()+
+  geom_histogram(aes(x, y=stat(density)), fill = "black", color = "white")+
+  labs(x="x", y='Frequência')+
+  ggtitle("                                            Histograma da f(x)")+
+  stat_function(fun = function(x) (1/pi*(1/(1+(x-1)^2))), color = "red")+
+  xlim(-10,10)+
+  theme_minimal()
+```
+
+
+
+\textbf{Exercício 2)} A distribuição Pareto (a,b) tem função de distribuição
+
+$$
+\begin{aligned}
+ F(x)= 1-\left(\frac{b}{x}\right)^2, x \geq b > 0, a > 0 \\
+\end{aligned}
+$$
+Use o método da transformada inversa para simular 100 valores da distribuição de Pareto (2,2).
+
+Como ja temos a FDA, F(X), conseguimos achar o valor de U, já que U = F(X), ou seja:
+
+$$U = F(X) = 1 - (\frac{b}{x})^a$$
+
+Consequentemente, podemos achar o valor de x isolando-o na expressão acima:
+
+$$U = 1 - (\frac{b}{x})^a \rightarrow (\frac{b}{x})^a = 1 - U \rightarrow \frac{b}{x} = \sqrt[a]{1 -U}$$
+
+$$\rightarrow x = \frac{b}{\sqrt[a]{1 -U}} \rightarrow x = \frac{b}{(1-U)^{\frac{1}{a}}}$$
+
+Além disso, sabendo que se trata de uma distribuição Pareto(2,2), ou seja, $a = 2$ e $b=2$, temos que:
+
+$$U = 1 - (\frac{2}{x})^{2}$$
+
+$$x = \frac{2}{(1 - U)^{\frac{1}{2}}} = \frac{2}{\sqrt[2]{1 - U}}$$
+
+Agora que já temos todos os nossos inputs, é possível gerar os NPA's com o seguinte código:
+
+```{r, message=FALSE, warning=FALSE}
+n <- 100
+a <- 2
+b <- 2
+u <- runif(n)
+x <- b/((1-u)^(1/a))
+```
+
+```{r,echo=TRUE, message=FALSE, warning=FALSE}
+seq <- seq(0, 100, 0.1)
+hist(x, col = "black", border = "white", probability = TRUE,
+     main = "Histograma da f(x)", ylab = "Densidade")
+lines(seq, 8/seq^3, col = "red")
+```
+
+\textbf{Exercício 3)} Gere 1.000 números pseudo-aleatórios da distribuição \textit{Beta}($\alpha$ =3, $\beta$ =5), usando o método da aceitação e  rejeição. Use a \textit{Unif}[0,1] como candidata.
+
+Sabemos que $Y \sim U[0,1]$ é a nossa densidade candidata e $X \sim Beta$ é a nossa densidade alvo. Primeiramente, temos que achar o valor de M, e, para isso, fazemos: 
+$$M \geqslant \frac{f(x)}{g(y)}$$
+Porém, sabemos que $g(y) = 1$, então:
+
+$$M \geqslant f(x)$$
+
+Assim, sabedo que se trata de um distribuição $Beta(\alpha = 3, \beta = 5)$, para achar o valor de M, basta realizar o seguinte código:
+
+```{r,echo=TRUE, message=FALSE, warning=FALSE}
+alpha <- 3
+beta <- 5
+f = function(x) {
+  dbeta(x, alpha, beta)
+}
+optimize(f, interval = c(0,1), maximum = TRUE)$objective #M = 2.3045
+```
+
+Além disso, é importante mostrar que:
+
+$$U \leqslant  (\frac{1}{M})(\frac{f(x)}{g(y)}) \rightarrow U \leqslant (\frac{1}{M})f(x)$$
+
+$$\rightarrow UM \leqslant f(x) \rightarrow U[0,M] \leqslant f(x)$$
+
+Portanto, agora que já temos todos os inputs necessários, conseguimos gerar os NPA's a partir do seguinte código:
+
+```{r,echo=TRUE, message=FALSE, warning=FALSE}
+N <- 1000
+alpha <- 3
+beta <- 5
+M <- 2.3
+
+u <- runif(N, min = 0, max=M) #geramos a uniforme U[0,M]
+y <- runif(N) #candidata
+x <- y[u<dbeta(y, alpha, beta)]
+```
+
+```{r,echo=TRUE, message=FALSE, warning=FALSE}
+w <- seq(0,1,0.01)
+hist(x,probability = TRUE, ylim = c(0,3), col = "black", border = "white", 
+     main = "Histograma da f(x)", ylab = "Densidade")
+lines(w,dbeta(w,alpha,beta),col = c("red"))
+```
+
+
+\textbf{Exercício 4)} Considere os seguintes algoritmos para geração de números pseudo-aleatórios da distribuição qui-quadrado.
+
+1. Gere $Z_1, \dots Z_\nu \ \stackrel{i.i.d.}{\sim} N(0,1).$
+2. Faça $X_1 = \sum_{i=1}^{\nu} Z_i^2.$
+3. Então, $X_\nu \sim \chi^2(\nu).$
+
+Alternativamente, $\nu$ par:
+
+1. Gere $U_i \stackrel{i.i.d.}{\sim} unif(0,1).$
+2. Faça $X_\nu = -2log(\prod_{i=1}^{\nu/2} U_i).$
+3. Então, $X_\nu \sim \chi^2(\nu).$
+
+Pois $\chi^2(\nu)$ = Gamma ($\nu/2$, 2), em que 2 é um parâmetro de escala.
+
+Escreva em R funções para gerar dos dois algoritmos. Para cada, faça um histograma de 1.000 valores gerados considerando $\nu$ = 6.
+
+
+O primeiro algoritmo pode ser gerado de duas maneiras:
+
+* Método 1: Soma por linhas da matriz
+
+```{r,echo=TRUE, message=FALSE, warning=FALSE}
+n <- 1000
+v <- 6 #numero de normais padrao
+
+x_v <- matrix(rnorm(n*v),n,v)^2
+
+## Método 1: Soma por linhas da matriz anterior
+y <- rowSums(x_v) #esse somatório das linhas gera os valores da qui-quadrado com 6 g.l
+mean(y) #tem que ser próximo de 6, pois a media da qui-quadrado é igual a "v"
+var(y) #tem que ser próximo de 12, pois a variancia da qui-quadrado é igual a "2*v"
+```
+
+* Método 2: 
+
+```{r,echo=TRUE, message=FALSE, warning=FALSE}
+y <- apply(x_v, MARGIN=1, FUN = sum)
+mean(y) #deverá ser próximo de v=6
+var(y) #deverá ser próximo de 2*v = 12
+```
+Nota-se que, em ambos os métodos, a média está próxima de 6 e a variáncia está próxima de 12, indicando que o algorítimo está bom. 
+
+Agora que já temos os NPA's gerados, é possível plotar o histograma do primeiro algoritmo:
+
+```{r,echo=TRUE, message=FALSE, warning=FALSE}
+hist(y,probability = TRUE, ylim = c(0,0.15), col = "black", border = "white", 
+     main = "Histograma da f(x)", ylab = "Densidade")
+```
+
+
+O segundo algoritmo, por sua vez, é calculado da seguinte maneira:
+
+```{r,echo=TRUE, message=FALSE, warning=FALSE}
+n <- 1000
+v <- 6 #numero de normais padrao
+
+x_v <- matrix(runif(n*v),n,v)
+
+x_v2 <- vector()
+for (i in 1:nrow(x_v)) {
+  y <- x_v[i,1]*x_v[i,2]*x_v[i,3]
+  x_v2 <- append(x_v2, y)
+}
+
+x_v3 <- -2*log(x_v2)
+mean(x_v3)
+var(x_v3)
+```
+Nota-se que a média está próxima de 6 e a variáncia está próxima de 12, indicando que o algorítimo está bom.
+
+Agora que já temos os NPA's gerados, podemos plotar o histograma:
+
+```{r,echo=TRUE, message=FALSE, warning=FALSE}
+hist(x_v3,probability = TRUE, ylim = c(0,0.15),col = "black", border = "white", 
+     main = "Histograma da f(x)", ylab = "Densidade")
+```

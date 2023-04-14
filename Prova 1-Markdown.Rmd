@@ -1,0 +1,116 @@
+---
+title: 'Prova 1 - Estatística Computacional - EST/UnB'
+subtitle: '28/03/2022'
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Aluno: Rafael Santana Araruna
+
+
+ __Exercício 1 (4.0pts)__ Considere a densidade $f(x)=1/x^2$ para $x\geq 1$. Use o método da transformação inversa para gerar 10000 números pseudo-aleatórios com densidade $f$. Faça um histograma dos valores gerados.
+ 
+Primeiramente, calcula-se a função acumulada, F(x), que consiste em:
+ 
+$$F(x) = \int \frac{1}{x^{2}}dx = -x^{-1} + C$$
+Agora, sabendo que U = F(x), isolamos o x:
+
+$$U = 1 - x^{-1} \rightarrow x = \frac{1}{1-u}$$
+Agora, conseguimos implementar o código para gerar os 10000 NA's e o seu respectivo histograma:
+
+```{r eval=T, message=FALSE, warning=FALSE}
+# Gerando NA's:
+
+n <- 10000
+u <- runif(n)
+x <- 1/(1-u)
+```
+
+```{r eval=T, message=FALSE, warning=FALSE}
+# Plotando o histograma:
+require(ggplot2)
+tabela <- data.frame(x)
+ggplot(tabela, aes(x=x)) +
+    geom_histogram(binwidth=10, fill="red", color="black") +
+  labs(x = "x", y = "Frequência") +
+    xlim(-100, 100) +
+  theme_minimal()
+
+```
+
+
+ __Exercício 2 (5.0pts)__ Seja $\rho \in [-1,1]$ e $X,\eta\sim N(0,1)$. Defina 
+$$Y=\rho{X}+\sqrt{1-\rho^2}\eta.$$ Considere o estimador 
+$$\widehat{\rho}(X,Y)=\frac{\sum_{i=1}^{n}(X_{i}-\overline{X})(Y_{i}-\overline{Y})}{\sqrt{\sum_{i=1}^{n}(X_{i}-\overline{X})^2 \sum_{i=1}^{n}(Y_{i}-\overline{Y})^2}}.$$ 
+Use métodos de Monte Carlo para estimar o viês de $\widehat{\rho}$. Considere ${\rho}=0.5$. 
+
+Primeiro, definimos os parâmetros:
+
+```{r eval=T, message=FALSE, warning=FALSE}
+x        <- rnorm(10^7) 
+preditor <- rnorm(10^7)
+p_real   <- 0.5
+y        <-  p_real*x + sqrt(1-p_real^2)*preditor
+```
+
+
+Em seguida, definimos a função e calculamos o p.hat:
+```{r eval=T, message=FALSE, warning=FALSE}
+a <- integrand <- function(x,y) {
+  
+  (sum((x - mean(x))*(y - mean(y))))/sqrt((sum((x - mean(x))^2))*(sum((y - mean(y))^2)))
+   
+}
+
+p.hat <- a(x,y)
+p.hat
+```
+Assim, o viés é:
+
+```{r eval=T, message=FALSE, warning=FALSE}
+vies <- abs(p.hat - 0.5)
+vies
+```
+
+
+ 
+ 
+ 
+ __Exercício 3 (1.0pts)__ Seja $X_{1},\ldots,X_{n}$ uma a.a. i.i.d. da distribuição $N(\lambda,\sigma^2)$ e
+ $$\widehat{\lambda}=\overline{X}=\frac{1}{n}\sum_{i=1}^{n}X_{i}.$$
+Um intervalo de confiança para $\lambda$ é dado por
+$$IC(\lambda)=\left[\overline{X}-\frac{p_{n,\alpha}\widehat{\sigma}}{\sqrt{n}};\overline{X}+\frac{p_{n,\alpha}\widehat{\sigma}}{\sqrt{n}} \right],$$ em que 
+$\widehat{\sigma}^2=\frac{1}{n-1}\sum_{i=1}^{n}(X_{i}-\overline{X})^2$ e $p_{n,\alpha}$ pode ser escolhido como o $1-\alpha/2$ quantil da $t$ com $n-1$ graus de liberdade. Escreva uma **função** para calcular a estimativa de Monte Carlo para o coeficiente de confiança do intervalo de confiança acima. Para $n = 10$ e $\alpha = 5\%$, usando o valor $p_{10,0.05} = 2.262157$, estime o coeficiente de confiança para $\lambda=50$ (considere $\sigma=1$ para geração dos dados). 
+
+
+Primeiro, definimos os parâmetros:
+```{r eval=T, message=FALSE, warning=FALSE}
+n          <- 10
+x          <- rnorm(n, 50, 1)
+lambda_hat <- mean(x)
+p_real     <- 2.262157
+sigma      <- 1
+sigma.hat  <- 1/(n-1)*sum(x-lambda_hat)^2
+```
+
+Agora, implementamos a função:
+```{r eval=T, message=FALSE, warning=FALSE}
+F_IC <- function(lambda,p,sigma_hat,n){
+  li <- lambda_hat - (p*sigma)/(sqrt(n))
+  ls <- lambda_hat + (p*sigma)/(sqrt(n))
+  print(c(li,ls))
+}
+```
+
+Por fim, jogamos os valores na função:
+```{r eval=T, message=FALSE, warning=FALSE}
+F_IC(lambda_hat,p_real,sigma.hat,n)
+```
+
+ 
+ 

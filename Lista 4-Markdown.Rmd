@@ -1,0 +1,117 @@
+---
+title: "Lista 4 - Reamostragem"
+author: "Rafael Santana Araruna"
+date: "01/04/2022"
+output: pdf_document
+---
+
+## Exercício 1) 
+
+Primeiramente, carrega-se o pacote "boot" e, consequentemente, o banco de dados "aircondit", a partir do seguinte código:
+
+```{r message=FALSE, warning=FALSE, echo=TRUE}
+require(boot)
+data(aircondit)
+head(aircondit)
+```
+
+Em seguida, define-se a estimativa de máxima verossimilhança de $\lambda$:
+
+```{r message=FALSE, warning=FALSE,echo=TRUE}
+emv.lambda <- function(x){ # estimador de lambda
+  
+  return(length(x)/sum(x))
+  
+}
+
+hours <- aircondit$hours
+n <- length(hours)
+lambda.hat <- emv.lambda(hours)
+```
+
+Agora, define-se algumas medidas:
+
+```{r message=FALSE, warning=FALSE,echo=TRUE}
+B <- 200 # número de replicas
+lambda.b <- numeric(B) # vetor para armazenar as replicas bootstrap
+```
+
+Dado os parâmetros acima, pode-se implementar as réplicas bootstrap:
+
+```{r message=FALSE, warning=FALSE,echo=TRUE}
+for(b in 1:B) {
+  
+  i <- sample(1:n, size = n, replace = TRUE)
+  hours.b <- hours[i] # gerando as novas amostras boostrap
+  lambda.b[b] <- emv.lambda(hours.b) # nossa b-ésima replica
+  
+}
+```
+
+Agora que temos nosso vetor "lambda.b", o qual armazena as réplicas bootstrap, podemos calcular a estimativa do viés e do erro padrão:
+
+```{r message=FALSE, warning=FALSE,echo=TRUE}
+vies <- mean(lambda.b) - lambda.hat # estimativa do vies
+
+se <- sd(lambda.b) # estimativa do erro padrao
+```
+
+```{r message=FALSE, warning=FALSE,echo=FALSE}
+df <- data.frame("Medida" = c("Viés", "Erro padrão"),
+                 "Valor" = c(vies,se))
+
+library(knitr)
+knitr::kable(df, align = 'c', caption = "Estimativas de Bootstrap")
+```
+
+
+## Exercício 2)
+
+Primeiramente, carrega-se os pacotes "bootstrap" e "boot" e, consequentemente, o banco de dados "law", a partir do seguinte código:
+
+```{r message=FALSE, warning=FALSE, echo=TRUE}
+require(bootstrap)
+require(boot)
+data(law)
+head(law)
+```
+
+Agora, define-se a estatística e, em seguida, algumas variáveis:
+
+```{r message=FALSE, warning=FALSE, echo=TRUE}
+# Escrevendo a estatística:
+
+theta.boot <- function(dat,ind) {
+  
+  y <- dat[ind,1]
+  z <- dat[ind,2]
+  
+  return(cor(y,z))
+  
+}
+
+y <- law$LSAT
+z <- law$GPA
+dat <- cbind(y,z)
+```
+
+Por fim, calcula-se, através do comando "boot", o IC bootstrap percentil de 95% para o coeficiente de correlação:
+
+```{r message=FALSE, warning=FALSE, echo=TRUE}
+boot.obj <- boot(dat, statistic = theta.boot, R = 2000)
+
+boot.ci(boot.obj, type = c("perc"), conf = c(0.95)) 
+
+```
+
+
+```{r message=FALSE, warning=FALSE, echo=FALSE}
+D <- boot.ci(boot.obj, type = c("perc"), conf = c(0.95)) 
+df <- data.frame("LI" = D$percent[4],
+                 "LS" = D$percent[5],
+                 "Valor da Correlação" = cor(y,z))
+
+library(knitr)
+knitr::kable(df,align = 'c', caption = "Intervalo de confiança Bootstrap percentil de 95%")
+```
+
